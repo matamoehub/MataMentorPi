@@ -1,27 +1,23 @@
-"""Infrared helpers for MataMentorPi."""
+"""MentorPi infrared placeholder with no fake data."""
 
 from __future__ import annotations
 
-from _runtime import runtime_state
+from _mentorpi_ros import MentorPiIntegrationError
 
-__version__ = "2.0.0"
+__version__ = "3.0.0"
 
 
 def set_mock_pattern(left: bool = False, center: bool = True, right: bool = False):
-    runtime_state().infrared = {"left": bool(left), "center": bool(center), "right": bool(right)}
-    return status()
+    raise NotImplementedError("Mock infrared values were removed.")
 
 
 def read():
-    return dict(runtime_state().infrared)
+    raise MentorPiIntegrationError("No official standalone infrared topic/service was identified in the public MentorPi repo.")
 
 
 def blocked():
-    values = read()
-    return any(values.values())
+    raise MentorPiIntegrationError("No official standalone infrared topic/service was identified in the public MentorPi repo.")
 
 
 def status() -> dict:
-    values = read()
-    values["blocked"] = blocked()
-    return values
+    return {"available": False, "reason": "No public standalone infrared interface in official repo audit"}

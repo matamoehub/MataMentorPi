@@ -1,61 +1,63 @@
-"""Depth camera helpers for MataMentorPi."""
+"""Real depth camera helpers backed by MentorPi ascamera topics."""
 
 from __future__ import annotations
 
-from _runtime import fake_depth_matrix, runtime_state
+from _mentorpi_ros import current_depth_image, current_image, start_launch, wait_for_message
 
-__version__ = "2.0.0"
+__version__ = "3.0.0"
+
+
+def ensure_depth_camera():
+    return start_launch("depth_camera", "peripherals", "depth_camera.launch.py")
 
 
 def rgb_frame():
-    state = runtime_state()
-    return {
-        "type": "rgb",
-        "resolution": state.depth_resolution,
-        "camera_pose": {"yaw": state.camera_yaw, "pitch": state.camera_pitch},
-    }
+    ensure_depth_camera()
+    image = current_image()
+    return image
 
 
 def depth_frame():
-    return {"type": "depth", "resolution": runtime_state().depth_resolution, "matrix_m": fake_depth_matrix()}
+    ensure_depth_camera()
+    return current_depth_image()
 
 
 def point_cloud_snapshot():
-    matrix = fake_depth_matrix(width=4, height=3)
-    points = []
-    for row_index, row in enumerate(matrix):
-        for col_index, depth in enumerate(row):
-            points.append({"x": round(col_index * 0.05, 3), "y": round(row_index * 0.05, 3), "z": depth})
-    return points
+    ensure_depth_camera()
+    depth = current_depth_image()
+    samples = []
+    step_y = max(1, depth.shape[0] // 6)
+    step_x = max(1, depth.shape[1] // 6)
+    for y in range(0, depth.shape[0], step_y):
+        for x in range(0, depth.shape[1], step_x):
+            z = float(depth[y, x]) / 1000.0
+            samples.append({"x": x, "y": y, "z_m": z})
+    return samples
 
 
 def depth_at(x: int, y: int):
-    matrix = fake_depth_matrix(width=8, height=6)
-    return matrix[y % len(matrix)][x % len(matrix[0])]
+    ensure_depth_camera()
+    depth = current_depth_image()
+    return int(depth[int(y), int(x)])
 
 
 def distance_at(x: int, y: int):
-    return depth_at(x, y)
+    return depth_at(x, y) / 1000.0
 
 
 def camera_info():
-    state = runtime_state()
-    return {
-        "resolution": state.depth_resolution,
-        "depth_scale_m": state.depth_scale_m,
-        "streaming": state.depth_streaming,
-    }
+    ensure_depth_camera()
+    msg = wait_for_message("/ascamera/camera_publisher/rgb0/camera_info", "sensor_msgs.msg", "CameraInfo", timeout=3.0)
+    return {"width": int(msg.width), "height": int(msg.height), "distortion_model": msg.distortion_model}
 
 
 def start_web_stream():
-    runtime_state().depth_streaming = True
-    return camera_info()
+    return ensure_depth_camera()
 
 
 def stop_web_stream():
-    runtime_state().depth_streaming = False
-    return camera_info()
+    raise NotImplementedError("The official depth_camera launch does not expose a dedicated stop-stream service.")
 
 
 def status() -> dict:
-    return camera_info()
+    return {"rgb_topic": "/ascamera/camera_publisher/rgb0/image", "depth_topic": "/ascamera/camera_publisher/depth0/image_raw"}

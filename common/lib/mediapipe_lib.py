@@ -1,38 +1,48 @@
-"""MediaPipe helpers for MataMentorPi."""
+"""Real MediaPipe and gesture-control adapters for MentorPi."""
 
 from __future__ import annotations
 
-__version__ = "2.0.0"
+from _mentorpi_ros import call_service, current_image, start_launch
+
+__version__ = "3.0.0"
 
 
 def detect_hands():
-    return [{"label": "right", "confidence": 0.96, "center": (0.58, 0.42)}]
+    start_launch("mediapipe_hand", "example", "hand_track/hand_track_node.launch.py")
+    return {"image_shape": tuple(current_image().shape), "note": "Use the official hand_track node output on the robot for live detections."}
 
 
 def detect_pose():
-    return {"pose_detected": True, "confidence": 0.93, "landmarks": 17}
+    start_launch("mediapipe_pose", "example", "body_control/body_control.launch.py")
+    return {"image_shape": tuple(current_image().shape), "note": "Pose detection is provided by the official body_control launch."}
 
 
 def detect_face():
-    return {"faces": 1, "confidence": 0.91}
+    start_launch("mediapipe_face", "example", "mediapipe_example/face_detect.py")
+    return {"image_shape": tuple(current_image().shape), "note": "Face detection uses the official mediapipe examples."}
 
 
 def follow_hand():
-    hand = detect_hands()[0]
-    return {"target": hand["label"], "command": "turn_right" if hand["center"][0] > 0.5 else "turn_left"}
+    start_launch("hand_gesture", "app", "hand_gesture_node.launch.py")
+    call_service("hand_gesture/enter", "std_srvs.srv", "Trigger")
+    call_service("hand_gesture/set_running", "std_srvs.srv", "SetBool", lambda req: setattr(req, "data", True))
+    return {"running": True, "service": "hand_gesture/set_running"}
 
 
 def finger_trajectory():
-    return {"points": [(0.2, 0.4), (0.35, 0.32), (0.52, 0.28), (0.7, 0.4)], "gesture": "arc"}
+    start_launch("hand_trajectory", "example", "hand_trajectory/hand_trajectory_node.launch.py")
+    return {"launch": "hand_trajectory/hand_trajectory_node.launch.py"}
 
 
 def body_control():
-    return {"pose": "arms_up", "robot_action": "celebrate"}
+    start_launch("body_control", "example", "body_control/body_control.launch.py")
+    return {"launch": "body_control/body_control.launch.py"}
 
 
 def fall_detection():
-    return {"fall_detected": False, "confidence": 0.04}
+    start_launch("fall_detection", "example", "body_control/fall_down_detect.launch.py")
+    return {"launch": "body_control/fall_down_detect.launch.py"}
 
 
 def status() -> dict:
-    return {"hands": len(detect_hands()), "pose_detected": detect_pose()["pose_detected"]}
+    return {"camera_topic": "/ascamera/camera_publisher/rgb0/image"}

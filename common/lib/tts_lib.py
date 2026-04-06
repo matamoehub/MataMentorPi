@@ -1,16 +1,20 @@
-"""Text-to-speech helpers for MataMentorPi."""
+"""Real TTS helpers backed by MentorPi tts_node."""
 
 from __future__ import annotations
 
-from _runtime import runtime_state
+from _mentorpi_ros import publish_text, start_launch
 
-__version__ = "2.0.0"
+__version__ = "3.0.0"
+
+
+def ensure_tts():
+    return start_launch("mentorpi_tts", "large_models", "tts_node.launch.py")
 
 
 def say(text: str, voice: str = "mentorpi"):
-    message = f"{voice}: {text}"
-    runtime_state().spoken.append(message)
-    return message
+    ensure_tts()
+    publish_text("tts_node/tts_text", text)
+    return {"voice": voice, "text": text}
 
 
 def ask(question: str):
@@ -18,9 +22,8 @@ def ask(question: str):
 
 
 def conversation():
-    return list(runtime_state().spoken)
+    raise NotImplementedError("MentorPi tts_node publishes speech but does not expose a conversation history service.")
 
 
 def status() -> dict:
-    spoken = runtime_state().spoken
-    return {"count": len(spoken), "last": spoken[-1] if spoken else None}
+    return {"topic": "tts_node/tts_text"}

@@ -1,31 +1,29 @@
-"""QR code helpers for MataMentorPi."""
+"""Real QR detection using the MentorPi camera stream."""
 
 from __future__ import annotations
 
-from _runtime import runtime_state
+import cv2
 
-__version__ = "2.0.0"
+from _mentorpi_ros import current_image
 
-
-def set_mock_codes(codes: list[str]):
-    runtime_state().qrcode_codes = list(codes)
-    runtime_state().qrcode_index = 0
-    return status()
+__version__ = "3.0.0"
 
 
 def scan():
-    state = runtime_state()
-    if not state.qrcode_codes:
-        return None
-    code = state.qrcode_codes[state.qrcode_index % len(state.qrcode_codes)]
-    state.qrcode_index += 1
-    return code
+    image = current_image()
+    detector = cv2.QRCodeDetector()
+    data, _, _ = detector.detectAndDecode(image)
+    return data or None
 
 
 def scan_all(limit: int = 3):
-    return [scan() for _ in range(max(1, int(limit)))]
+    result = scan()
+    return [result] if result else []
+
+
+def set_mock_codes(codes: list[str]):
+    raise NotImplementedError("Mock QR codes were removed. Use a real camera frame and QRCodeDetector.")
 
 
 def status() -> dict:
-    state = runtime_state()
-    return {"available": list(state.qrcode_codes), "next_index": state.qrcode_index}
+    return {"camera_topic": "/ascamera/camera_publisher/rgb0/image"}

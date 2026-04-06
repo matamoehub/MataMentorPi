@@ -1,39 +1,50 @@
-"""Line following helpers for MataMentorPi."""
+"""Real line-following adapter for the official MentorPi line_following node."""
 
 from __future__ import annotations
 
-from _runtime import runtime_state
+from _mentorpi_ros import call_service, start_launch
 
-__version__ = "2.0.0"
+__version__ = "3.0.0"
 
 
-def set_mock_pattern(pattern: list[int]):
-    if len(pattern) != 3:
-        raise ValueError("Line pattern must have exactly three sensor values.")
-    runtime_state().line_pattern = [1 if int(v) else 0 for v in pattern]
-    return read()
+def _ensure_node():
+    start_launch("line_following", "app", "line_following_node.launch.py")
+
+
+def start(color: str = "black"):
+    _ensure_node()
+    call_service("line_following/enter", "std_srvs.srv", "Trigger")
+    call_service(
+        "line_following/set_large_model_target_color",
+        "large_models_msgs.srv",
+        "SetString",
+        lambda req: setattr(req, "data", str(color)),
+    )
+    call_service("line_following/set_running", "std_srvs.srv", "SetBool", lambda req: setattr(req, "data", True))
+    return {"running": True, "color": color}
+
+
+def stop():
+    _ensure_node()
+    call_service("line_following/set_running", "std_srvs.srv", "SetBool", lambda req: setattr(req, "data", False))
+    return {"running": False}
 
 
 def read():
-    return list(runtime_state().line_pattern)
+    raise NotImplementedError("The official line_following node does not expose raw line sensor reads.")
 
 
 def on_line():
-    return sum(read()) >= 1
+    raise NotImplementedError("Use line_following/image_result for visual feedback instead of fake sensor values.")
 
 
 def follow_line_step():
-    left, center, right = read()
-    if center:
-        action = "forward"
-    elif left:
-        action = "turn_left"
-    elif right:
-        action = "turn_right"
-    else:
-        action = "search"
-    return {"pattern": read(), "action": action}
+    raise NotImplementedError("Use start(color=...) to hand control to the official line_following node.")
+
+
+def set_mock_pattern(pattern: list[int]):
+    raise NotImplementedError("Mock line patterns were removed.")
 
 
 def status() -> dict:
-    return {"pattern": read(), "on_line": on_line()}
+    return {"services": ["line_following/enter", "line_following/set_running", "line_following/set_large_model_target_color"]}

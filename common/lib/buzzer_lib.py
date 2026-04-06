@@ -1,27 +1,24 @@
-"""Buzzer and sound helpers for MataMentorPi."""
+"""Real buzzer helpers backed by ros_robot_controller."""
 
 from __future__ import annotations
 
-from _runtime import runtime_state
+from _mentorpi_ros import publish_buzzer
 
-__version__ = "2.0.0"
+__version__ = "3.0.0"
 
 
-def beep(duration_s: float = 0.2, pitch: str = "A4"):
-    event = f"beep:{pitch}:{round(duration_s, 2)}"
-    runtime_state().buzzer_events.append(event)
-    return event
+def beep(duration_s: float = 0.2, pitch: int = 1900):
+    publish_buzzer(freq=int(pitch), on_time=float(duration_s), off_time=0.05, repeat=1)
+    return {"freq": int(pitch), "duration_s": float(duration_s)}
 
 
 def horn(times: int = 1):
-    events = [beep(duration_s=0.3, pitch="C5") for _ in range(max(1, int(times)))]
-    return {"horn": events}
+    return [beep(duration_s=0.15, pitch=2200) for _ in range(max(1, int(times)))]
 
 
 def celebrate():
-    tune = [beep(0.15, "C5"), beep(0.15, "E5"), beep(0.25, "G5")]
-    return {"celebrate": tune}
+    return [beep(0.1, 1800), beep(0.1, 2200), beep(0.2, 2600)]
 
 
 def status() -> dict:
-    return {"recent": runtime_state().buzzer_events[-10:]}
+    return {"topic": "ros_robot_controller/set_buzzer"}

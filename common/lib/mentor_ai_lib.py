@@ -1,50 +1,83 @@
-"""Large-model style helpers for MataMentorPi."""
+"""Real large-model helpers backed by MentorPi agent_process, TTS, and VLLM services."""
 
 from __future__ import annotations
 
-from _runtime import runtime_state
+import os
 
-__version__ = "2.0.0"
+from _mentorpi_ros import MentorPiIntegrationError, call_service, publish_text, start_launch, wait_for_message
+
+__version__ = "3.0.0"
+
+
+def _api_key() -> str:
+    value = os.environ.get("OPENAI_API_KEY") or os.environ.get("MENTORPI_OPENAI_API_KEY")
+    if not value:
+        raise MentorPiIntegrationError("OPENAI_API_KEY is required for the official MentorPi large_models agent_process.")
+    return value
+
+
+def _base_url() -> str:
+    return os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
 
 
 def wake():
-    runtime_state().ai_awake = True
+    start_launch("mentorpi_voice", "large_models", "start.launch.py")
     return {"awake": True}
 
 
 def sleep():
-    runtime_state().ai_awake = False
     return {"awake": False}
 
 
 def voice_command(command: str):
     wake()
-    return {"command": command, "intent": command.lower().replace(" ", "_")}
+    publish_text("tts_node/tts_text", command)
+    return {"command": command}
 
 
 def ask_llm(prompt: str):
     wake()
-    return {
-        "prompt": prompt,
-        "response": f"Mission plan for: {prompt}",
-        "steps": ["observe", "decide", "act", "report"],
-    }
+    result = call_service(
+        "agent_process/set_llm_content",
+        "large_models_msgs.srv",
+        "SetContent",
+        lambda req: (
+            setattr(req, "model", os.environ.get("MENTORPI_LLM_MODEL", "gpt-4o-mini")),
+            setattr(req, "api_key", _api_key()),
+            setattr(req, "base_url", _base_url()),
+            setattr(req, "prompt", "You are MentorPi's planning assistant."),
+            setattr(req, "query", prompt),
+        ),
+        timeout=30.0,
+    )
+    return {"prompt": prompt, "response": result.message}
 
 
 def ask_vlm(question: str):
     wake()
-    return {"question": question, "answer": "I can see a person, a traffic light, and open floor space."}
+    result = call_service(
+        "agent_process/set_vllm_content",
+        "large_models_msgs.srv",
+        "SetContent",
+        lambda req: (
+            setattr(req, "model", os.environ.get("MENTORPI_VLM_MODEL", "gpt-4o-mini")),
+            setattr(req, "api_key", _api_key()),
+            setattr(req, "base_url", _base_url()),
+            setattr(req, "prompt", "Answer briefly based on the current robot camera frame."),
+            setattr(req, "query", question),
+        ),
+        timeout=30.0,
+    )
+    return {"question": question, "answer": result.message}
 
 
 def plan_mission(goal: str):
-    wake()
-    return {"goal": goal, "plan": ["localize", "navigate", "inspect", "summarize"]}
+    return ask_llm(goal)
 
 
 def summarize_scene():
-    wake()
-    return "Scene summary: open corridor, one pedestrian, green traffic light, no obstacle inside 0.6m."
+    return ask_vlm("Summarize the current scene for the operator.")
 
 
 def status() -> dict:
-    return {"awake": runtime_state().ai_awake}
+    return {"llm_service": "agent_process/set_llm_content", "vlm_service": "agent_process/set_vllm_content"}

@@ -1,28 +1,27 @@
-"""Sonar helpers for MataMentorPi."""
+"""MentorPi sonar placeholder with no fake data."""
 
 from __future__ import annotations
 
-from _runtime import clamp, runtime_state
+from _mentorpi_ros import MentorPiIntegrationError
 
-__version__ = "2.0.0"
+__version__ = "3.0.0"
 
 
 def set_mock_distance(distance_m: float):
-    runtime_state().sonar_distance_m = clamp(distance_m, 0.05, 8.0)
-    return runtime_state().sonar_distance_m
+    raise NotImplementedError("Mock sonar values were removed.")
 
 
 def distance():
-    return round(runtime_state().sonar_distance_m, 3)
+    raise MentorPiIntegrationError("No official standalone sonar topic/service was identified in the public MentorPi repo.")
 
 
 def distance_cm():
-    return round(distance() * 100.0, 1)
+    raise MentorPiIntegrationError("No official standalone sonar topic/service was identified in the public MentorPi repo.")
 
 
 def is_clear(threshold_m: float = 0.4):
-    return distance() > float(threshold_m)
+    raise MentorPiIntegrationError("No official standalone sonar topic/service was identified in the public MentorPi repo.")
 
 
 def status() -> dict:
-    return {"distance_m": distance(), "distance_cm": distance_cm()}
+    return {"available": False, "reason": "No public standalone sonar interface in official repo audit"}

@@ -1,33 +1,36 @@
-"""Autonomous driving helpers for MataMentorPi."""
+"""Real autonomous-driving launch helpers for MentorPi."""
 
 from __future__ import annotations
 
-__version__ = "2.0.0"
+from _mentorpi_ros import start_launch
+
+__version__ = "3.0.0"
 
 
 def lane_status():
-    return {"lane_center_offset_px": -12, "curvature": "gentle_left", "confidence": 0.87}
+    start_launch("self_driving", "example", "self_driving/self_driving.launch.py")
+    return {"launch": "self_driving/self_driving.launch.py"}
 
 
 def start_lane_follow(speed: float = 0.2):
-    return {"mode": "lane_follow", "speed": speed, "lane": lane_status()}
+    return {"speed": speed, **lane_status()}
 
 
 def stop():
-    return {"mode": "idle"}
+    return {"note": "Stop the self-driving launch or publish zero cmd_vel from your controller."}
 
 
 def detect_traffic_light():
-    return {"state": "green", "confidence": 0.82}
+    return {"note": "Traffic-light recognition is part of the official self_driving and yolov5 flows."}
 
 
 def plan_turn(direction: str = "left"):
-    return {"turn": direction, "steps": ["slow_down", f"signal_{direction}", f"turn_{direction}", "straighten"]}
+    return {"direction": direction, "launch": "self_driving/self_driving.launch.py"}
 
 
 def parking_sequence():
-    return ["scan_space", "align", "reverse", "straighten", "stop"]
+    return {"launch": "self_driving/self_driving.launch.py", "feature": "parking"}
 
 
 def status() -> dict:
-    return {"lane": lane_status(), "traffic_light": detect_traffic_light()}
+    return {"launch": "example/example/self_driving/self_driving.launch.py"}

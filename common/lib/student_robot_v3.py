@@ -26,7 +26,6 @@ import tracking_lib
 import tts_lib
 import vision_lib
 import yolo_lib
-from _runtime import reset_runtime, status_snapshot
 
 __version__ = "3.0.0"
 
@@ -81,7 +80,14 @@ class RobotV3:
         self.ai = _ModuleNamespace(mentor_ai_lib)
 
     def status(self) -> dict:
-        return status_snapshot()
+        return {
+            "move": self.move.status(),
+            "lidar": self.lidar.status(),
+            "depth": self.depth.status(),
+            "slam": self.slam.status(),
+            "nav": self.nav.status(),
+            "ai": self.ai.status(),
+        }
 
     def stop(self):
         robot_moves.stop()
@@ -90,7 +96,7 @@ class RobotV3:
         return {"stopped": True}
 
     def reset(self):
-        return reset_runtime()
+        raise NotImplementedError("The real MentorPi integration layer does not support resetting robot state in-memory.")
 
 
 def bot() -> RobotV3:
